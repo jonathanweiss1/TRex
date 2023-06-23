@@ -22,6 +22,7 @@ package polimi.trex.examples;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -40,96 +41,72 @@ import polimi.trex.packets.TRexPkt;
 import polimi.trex.ruleparser.TRexRuleParser;
 
 /**
+ * WIE FUNKTIONIERT DAS HIER:
+ * Eigentlich ganz einfach. EventTypes werden als int repräsentiert. Das macht man mit Assign in den TESLA Regeln.
+ * Dann kann man events publishen und subscriben, indem man immer das jeweilige int angibt.
+ * Der Einfachheit halber hab ich im Originalcode die ints am anfang einmal durch Variablen ersetzt, dann ist es besser lesbar.
+ * 
+ * Ich habe den kompletten Commandline Mist entfernt. Wenn ihr was am Code verändert, danach einfach nochmal compilieren mit "ant jars" und dann ausführen mit "java -jar TRex-client.jar"
+ */
+
+
+/**
  * @authors Gianpaolo Cugola, Daniele Rogora
  * 
  * A very basic, command line oriented, client for TRex.
  */
 public class CommandLineClient implements PacketListener {
-	static String teslaRule;
-	static String readFile(String path, Charset encoding) 
-			  throws IOException 
-			{
-			    File file = new File(path);
-			    FileInputStream fis = new FileInputStream(file);
-			    byte[] encoded = new byte[(int) file.length()];
-			    fis.read(encoded);
-			    fis.close();
-			    return encoding.decode(ByteBuffer.wrap(encoded)).toString();
-			}
+	// Jeder EventType wird durch eine id repräsentiert:
+	static int SMOKE = 2000;
+	static int TEMP = 2001;
+	static int FIRE = 2100;
+
+	// Das hier sind die beiden TESLA Regeln aus dem Paper. Der Code hat ursprünglich die Befehle aus einer Datei gelesen, deswegen müssen die escape-sequenzen rein:
+	static String assignment = String.format("Assign %d => Smoke, %d => Temp, %d => Fire\r\n", SMOKE, TEMP, FIRE);
+	static String definition = "Define\tFire(area: string, measuredTemp: int)\r\n";
 	
+	static String R0_From = "From\t\tTemp(value>45)\r\n";
+	static String R0_Where = "Where\tarea=Temp.area and measuredTemp=Temp.value";
+
+	static String R0 = assignment + definition + R0_From + R0_Where;
+
+	static String R1_From = "From\t\tSmoke(area=$a) and each Temp(area=$a and value>45) within 5 min. from Smoke\r\n";
+	static String R1_Where = "Where\tarea=Smoke.area and measuredTemp=Temp.value";
+
+	static String R1 = assignment + definition + R1_From + R1_Where;
+
 	private TransportManager tManager = new TransportManager(true);
+
+
     public static void main(String[] args) throws IOException {
-   	String serverHost = null;
-	int serverPort = -1;
-	List<Integer> subTypes = null;
-	int pubType = -1;
-	List<String> keys=null, values=null;
-	CommandLineClient client;
-	int i = 0;
-	Boolean sendRule = false;
-	try {
-	    subTypes = new ArrayList<Integer>();
-	    pubType = -1;
-	    keys = new ArrayList<String>();
-	    values = new ArrayList<String>();
-	    if(args.length<2) printUsageAndExit();
-	    serverHost = args[i++];
-	    serverPort = Integer.parseInt(args[i++]);
-	    while(i<args.length) {
-		if(i<args.length && args[i].equals("-pub")) {
-		    i++;
-		    pubType = Integer.parseInt(args[i++]);
-		    while(i<args.length && !args[i].equals("-sub")) {
-		    //System.out.println("Adding key " + args[i]);
-			keys.add(args[i++]);
-			//System.out.println("Adding value " + args[i]);
-			values.add(args[i++]);
-		    }
-		}
-		if(i<args.length && args[i].equals("-sub")) {
-		    i++;
-		    while(i<args.length && !args[i].equals("-sub")) {
-			subTypes.add(Integer.parseInt(args[i++]));
-		    }
-		}
-		if(i<args.length && args[i].equals("-rule")) {
-		    i++;
-		    sendRule = true;
-		    teslaRule = readFile(args[i], Charset.defaultCharset());
-		    i++;
-		}
-	    }
-	} catch(NumberFormatException e) {
-	    System.out.println("Error at parameter "+i);
-	    printUsageAndExit();
-	}
-	try {
-	    client = new CommandLineClient(serverHost, serverPort);
-	    if(subTypes.size()>0) {
+		String serverHost = "localhost";
+		int serverPort = 50254;
+		CommandLineClient client;
+
+		client = new CommandLineClient(serverHost, serverPort);
 		client.tManager.addPacketListener(client);
 		client.tManager.start();
-		client.subscribe(subTypes);
-	    }
-	    if (sendRule) client.sendRule();
-	    if(pubType!=-1) client.publish(pubType, keys, values);
-	} catch(IOException e) { e.printStackTrace(); }
-    }
 
-    private static void printUsageAndExit() {
-	System.out.println("Usage: java -jar TRexClient-JavaEx.jar "+
-			   "<server_host> <server_port> "+
-			   "[-rule path/to/file]"+
-			   "[-sub <evt_type_1> ... <evt_type_n>]"+
-			   "[-pub <evt_type> [<key_1> <val_1> ... <key_n> <val_n>]]");
-	System.exit(-1);
-    }
+
+		// ---------------------------------------------------------------------------------
+		// Subscribe für Temp, Fire und Smoke events
+		client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
+		// Regel für Middleware wird aktiviert
+		client.sendRule(R0);
+		// Publish ein Temp event (2001) mit den Attributen area = 1 und value = 50
+		// Die Middleware erkennt das Temp.value > 45 ist und sendet deswegen ein zusätzliches FIRE event aus
+		// Leider wird nicht geprüft ob eine Regel schon existiert. Wenn das Programm also zweimal läuft ohne dazwischen den Server neu zu starten
+		// werden dann 2 FIRE events erstellt.
+		client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "50"}));
+		// ----------------------------------------------------------------------------------
+	}
 
     public CommandLineClient(String serverHost, int serverPort) throws IOException {
     	tManager.connect(serverHost, serverPort);
     }
  
-    public void sendRule() {
-    	RulePkt rule = TRexRuleParser.parse(teslaRule, 2000);
+    public void sendRule(String rule_) {
+    	RulePkt rule = TRexRuleParser.parse(rule_, 2000);
     	try {
 			tManager.sendRule(rule, EngineType.CPU);
 		} catch (IOException e) { 
@@ -175,6 +152,7 @@ public class CommandLineClient implements PacketListener {
 	    }
 	}
 	try {
+		System.out.println(pub);
 	    tManager.send(pub);
 	} catch (IOException e) { e.printStackTrace(); }	
     }

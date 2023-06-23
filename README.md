@@ -1,3 +1,18 @@
+Achtung Achtung
+===============
+
+Ich habe [hier](TRex-Java-client/src/polimi/trex/examples/CommandLineClient.java) das Programm etwas abgeändert und kommentiert wie es funktioniert.
+
+xoxo Gossip Girl
+
+
+
+
+
+
+
+
+
 T-Rex
 =====
 
