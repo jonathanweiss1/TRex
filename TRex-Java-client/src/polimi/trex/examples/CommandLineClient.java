@@ -88,6 +88,17 @@ public class CommandLineClient implements PacketListener {
 		client.tManager.start();
 
 
+		int TempCounter = 0;
+		int FireCounter = 0;
+		int SmokeCounter = 0;
+
+		client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
+		client.sendRule(R0);
+		for (int i = 0; i < 1000; i++){
+			if ((i + 1) % 10 == 0) {
+				client.publish(FIRE, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "50"}));
+			}
+		}
 		// ---------------------------------------------------------------------------------
 		// Subscribe für Temp, Fire und Smoke events
 		client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
