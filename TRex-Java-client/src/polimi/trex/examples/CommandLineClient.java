@@ -91,8 +91,9 @@ public class CommandLineClient implements PacketListener {
 
 		client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
 
+		// create 1000 rules
 		for (int i = 0; i < 1000; i++){
-			// every 10th iteration, publish a new Temp event
+			// every 10th iteration, publish a new Fire rule
 			if ((i + 1) % 10 == 0) {
 				// Generate 10 random unifrom distributed variables
 				int[] variables = new int[10];
@@ -110,6 +111,18 @@ public class CommandLineClient implements PacketListener {
 					String R0 = assignment + definition + R0_From + R0_Where;
 					client.sendRule(R0);
 				}
+			}
+		}
+		// create 1000 events
+		int PublishEventCounter = 1000;
+		double SmokeFactor = 0.9;
+		for (int j = 0; j < PublishEventCounter; j++){
+			if (j < PublishEventCounter*SmokeFactor) {
+				// execute this 9000 times
+				client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "50"}));
+			} else {
+				// execute this 1000 times
+				client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "60"}));
 			}
 		}
 
