@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.io.File;
 import java.io.FileInputStream;
+import java.util.Random;
 
 import polimi.trex.common.Attribute;
 import polimi.trex.common.Consts.EngineType;
@@ -79,6 +80,9 @@ public class CommandLineClient implements PacketListener {
 
 
     public static void main(String[] args) throws IOException {
+
+		Random random = new Random();
+
 		String serverHost = "localhost";
 		int serverPort = 50254;
 		CommandLineClient client;
@@ -95,8 +99,17 @@ public class CommandLineClient implements PacketListener {
 		client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
 		client.sendRule(R0);
 		for (int i = 0; i < 1000; i++){
+			// every 10th iteration, publish a new Temp event
 			if ((i + 1) % 10 == 0) {
-				client.publish(FIRE, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "50"}));
+				// Generate 10 random unifrom distributed variables
+				int[] variables = new int[10];
+				for (int j = 0; j < variables.length; j++) {
+					variables[j] = random.nextInt(100) + 1;
+				}
+				int[] TemperatureUniform = variables;
+				for(int temp: TemperatureUniform){
+					client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", String.valueOf(temp)}));
+				}
 			}
 		}
 		// ---------------------------------------------------------------------------------
