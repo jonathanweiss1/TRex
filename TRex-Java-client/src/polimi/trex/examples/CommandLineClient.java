@@ -63,18 +63,11 @@ public class CommandLineClient implements PacketListener {
 	static int FIRE = 2100;
 
 	// Das hier sind die beiden TESLA Regeln aus dem Paper. Der Code hat ursprünglich die Befehle aus einer Datei gelesen, deswegen müssen die escape-sequenzen rein:
-	static String assignment = String.format("Assign %d => Smoke, %d => Temp, %d => Fire\r\n", SMOKE, TEMP, FIRE);
-	static String definition = "Define\tFire(area: string, measuredTemp: int)\r\n";
-	
-	static String R0_From = "From\t\tTemp(value>45)\r\n";
-	static String R0_Where = "Where\tarea=Temp.area and measuredTemp=Temp.value";
 
-	static String R0 = assignment + definition + R0_From + R0_Where;
+	// static String R1_From = "From\t\tSmoke(area=$a) and each Temp(area=$a and value>45) within 5 min. from Smoke\r\n";
+	// static String R1_Where = "Where\tarea=Smoke.area and measuredTemp=Temp.value";
 
-	static String R1_From = "From\t\tSmoke(area=$a) and each Temp(area=$a and value>45) within 5 min. from Smoke\r\n";
-	static String R1_Where = "Where\tarea=Smoke.area and measuredTemp=Temp.value";
-
-	static String R1 = assignment + definition + R1_From + R1_Where;
+	// static String R1 = assignment + definition + R1_From + R1_Where;
 
 	private TransportManager tManager = new TransportManager(true);
 
@@ -97,7 +90,7 @@ public class CommandLineClient implements PacketListener {
 		int SmokeCounter = 0;
 
 		client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
-		client.sendRule(R0);
+
 		for (int i = 0; i < 1000; i++){
 			// every 10th iteration, publish a new Temp event
 			if ((i + 1) % 10 == 0) {
@@ -108,20 +101,28 @@ public class CommandLineClient implements PacketListener {
 				}
 				int[] TemperatureUniform = variables;
 				for(int temp: TemperatureUniform){
-					client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", String.valueOf(temp)}));
+					String assignment = String.format("Assign %d => Smoke, %d => Temp, %d => Fire\r\n", SMOKE, TEMP, FIRE);
+					String definition = "Define\tFire(area: string, measuredTemp: int)\r\n";
+					String R0_From = "From\t\tTemp(value>45)\r\n";
+					R0_From = R0_From.replace("45", String.valueOf(temp));
+					String R0_Where = "Where\tarea=Temp.area and measuredTemp=Temp.value";
+
+					String R0 = assignment + definition + R0_From + R0_Where;
+					client.sendRule(R0);
 				}
 			}
 		}
+
 		// ---------------------------------------------------------------------------------
 		// Subscribe für Temp, Fire und Smoke events
-		client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
+		// client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
 		// Regel für Middleware wird aktiviert
-		client.sendRule(R0);
+		// client.sendRule(R0);
 		// Publish ein Temp event (2001) mit den Attributen area = 1 und value = 50
 		// Die Middleware erkennt das Temp.value > 45 ist und sendet deswegen ein zusätzliches FIRE event aus
 		// Leider wird nicht geprüft ob eine Regel schon existiert. Wenn das Programm also zweimal läuft ohne dazwischen den Server neu zu starten
 		// werden dann 2 FIRE events erstellt.
-		client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "50"}));
+		// client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "50"}));
 		// ----------------------------------------------------------------------------------
 	}
 
