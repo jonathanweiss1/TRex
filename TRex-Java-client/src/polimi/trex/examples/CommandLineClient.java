@@ -46,178 +46,212 @@ import polimi.trex.ruleparser.TRexRuleParser;
  * Eigentlich ganz einfach. EventTypes werden als int repräsentiert. Das macht man mit Assign in den TESLA Regeln.
  * Dann kann man events publishen und subscriben, indem man immer das jeweilige int angibt.
  * Der Einfachheit halber hab ich im Originalcode die ints am anfang einmal durch Variablen ersetzt, dann ist es besser lesbar.
- * 
+ * <p>
  * Ich habe den kompletten Commandline Mist entfernt. Wenn ihr was am Code verändert, danach einfach nochmal compilieren mit "ant jars" und dann ausführen mit "java -jar TRex-client.jar"
  */
 
 
 /**
  * @authors Gianpaolo Cugola, Daniele Rogora
- * 
+ *
  * A very basic, command line oriented, client for TRex.
  */
 public class CommandLineClient implements PacketListener {
-	// Jeder EventType wird durch eine id repräsentiert:
-	// static int SMOKE = 2000;
-	// static int TEMP = 2001;
-	// static int FIRE = 2100;
+    // Jeder EventType wird durch eine id repräsentiert:
+    // static int SMOKE = 2000;
+    // static int TEMP = 2001;
+    // static int FIRE = 2100;
 
-	// Das hier sind die beiden TESLA Regeln aus dem Paper. Der Code hat ursprünglich die Befehle aus einer Datei gelesen, deswegen müssen die escape-sequenzen rein:
+    // Das hier sind die beiden TESLA Regeln aus dem Paper. Der Code hat ursprünglich die Befehle aus einer Datei gelesen, deswegen müssen die escape-sequenzen rein:
 
-	// static String R1_From = "From\t\tSmoke(area=$a) and each Temp(area=$a and value>45) within 5 min. from Smoke\r\n";
-	// static String R1_Where = "Where\tarea=Smoke.area and measuredTemp=Temp.value";
+    // static String R1_From = "From\t\tSmoke(area=$a) and each Temp(area=$a and value>45) within 5 min. from Smoke\r\n";
+    // static String R1_Where = "Where\tarea=Smoke.area and measuredTemp=Temp.value";
 
-	// static String R1 = assignment + definition + R1_From + R1_Where;
+    // static String R1 = assignment + definition + R1_From + R1_Where;
 
-	private TransportManager tManager = new TransportManager(true);
+    private TransportManager tManager = new TransportManager(true);
 
 
     public static void main(String[] args) throws IOException {
 
-		Random random = new Random();
+        Random random = new Random();
 
-		String serverHost = "localhost";
-		int serverPort = 50254;
-		CommandLineClient client;
+        String serverHost = "localhost";
+        int serverPort = 50254;
+        CommandLineClient client;
 
-		client = new CommandLineClient(serverHost, serverPort);
-		client.tManager.addPacketListener(client);
-		client.tManager.start();
+        client = new CommandLineClient(serverHost, serverPort);
+        client.tManager.addPacketListener(client);
+        client.tManager.start();
 
 
-		int TempCounter = 0;
-		int FireCounter = 0;
-		int SmokeCounter = 0;
-		List<Integer> variableValues = new ArrayList<>();
+        int TempCounter = 0;
+        int FireCounter = 0;
+        int SmokeCounter = 0;
+        List<Integer> variableValues = new ArrayList<>();
 
-		client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
-		// create 1000 rules
-		for (int i = 0; i < 10; i++) {
-			int SMOKE = 2000;
-			int TEMP = 2001;
-			int FIRE = 2100;
+        client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
 
-			String assignment = String.format("Assign %d => Smoke, %d => Temp, %d => Fire\r\n", SMOKE, TEMP, FIRE);
-			String definition = "Define\tFire(area: string, measuredTemp: int)\r\n";
-			String R0_From = "From\t\tTemp(value>45)\r\n";
-			String R0_Where = "Where\tarea=Temp.area and measuredTemp=Temp.value";
-			for (int j = 0; i < 100; i++) {
-				int temp = random.nextInt(100) + 1;
-				R0_From = R0_From.replace("45", String.valueOf(temp));
-				String R0 = assignment + definition + R0_From + R0_Where;
-				client.sendRule(R0);
-			}
-		}
+        int SMOKE = 2000;
+        int TEMP = 2001;
+        int FIRE = 2100;
+        int ruleCounter = 0;
+        // create 1000 rules
+        for (int i = 0; i < 10; i++) {
+            String assignment = String.format("Assign %d => Smoke, %d => Temp, %d => Fire\r\n", SMOKE, TEMP, FIRE);
+            String definition = "Define\tFire(area: string, measuredTemp: int)\r\n";
+            String R0_From = "From\t\tTemp(value>45)\r\n";
+            String R0_Where = "Where\tarea=Temp.area and measuredTemp=Temp.value";
+            String R0 = "";
+            for (int j = 0; j < 100; j++) {
+                int temp = random.nextInt(100) + 1;
+                R0_From = R0_From.replace("45", String.valueOf(temp));
+                R0 = assignment + definition + R0_From + R0_Where;
+                client.sendRule(R0);
+            }
+            FIRE += 1;
+            ruleCounter += 1;
+            System.out.println("RuleCounter: " + ruleCounter);
+            System.out.println("RuleDefinition: " + R0);
+        }
 
-		// create 1000 events
-		/**
-		int PublishEventCounter = 1000;
-		double SmokeFactor = 0.9;
-		for (int j = 0; j < PublishEventCounter; j++){
-			if (j < PublishEventCounter*SmokeFactor) {
-				// execute this 9000 times
-				client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "50"}));
-			} else {
-				// execute this 1000 times
-				client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "60"}));
-			}
-		}
-		 **/
+        List<String> Events = new ArrayList<String>();
 
-		// ---------------------------------------------------------------------------------
-		// Subscribe für Temp, Fire und Smoke events
-		// client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
-		// Regel für Middleware wird aktiviert
-		// client.sendRule(R0);
-		// Publish ein Temp event (2001) mit den Attributen area = 1 und value = 50
-		// Die Middleware erkennt das Temp.value > 45 ist und sendet deswegen ein zusätzliches FIRE event aus
-		// Leider wird nicht geprüft ob eine Regel schon existiert. Wenn das Programm also zweimal läuft ohne dazwischen den Server neu zu starten
-		// werden dann 2 FIRE events erstellt.
-		// client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "50"}));
-		// ----------------------------------------------------------------------------------
-	}
+        // create 1000 events
+        for (int k = 0; k < 1000; k++) {
+            if (k < 100) {
+                Events.add("SMOKE");
+            } else {
+                Events.add("TEMP");
+            }
+        }
+		int smokeCounter = 0;
+		int tempCounter = 0;
+        for (int s = 0; s < 1000; s++) {
+            int randomIndex = random.nextInt(Events.size());
+            String randomEvent = Events.get(randomIndex);
+            if (randomEvent.equals("SMOKE")) {
+                client.publish(SMOKE, Arrays.asList(new String[]{"area"}), Arrays.asList(new String[]{"1"}));
+				smokeCounter += 1;
+            } else if (randomEvent.equals("TEMP")) {
+                int temp = random.nextInt(100) + 1;
+                String tempStr = String.valueOf(temp);
+                client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", tempStr}));
+				tempCounter += 1;
+            }
+            Events.remove(randomIndex);
+			System.out.println("SmokeCounter: " + smokeCounter);
+			System.out.println("TempCounter: " + tempCounter);
+        }
+
+
+    // ---------------------------------------------------------------------------------
+    // Subscribe für Temp, Fire und Smoke events
+    // client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
+    // Regel für Middleware wird aktiviert
+    // client.sendRule(R0);
+    // Publish ein Temp event (2001) mit den Attributen area = 1 und value = 50
+    // Die Middleware erkennt das Temp.value > 45 ist und sendet deswegen ein zusätzliches FIRE event aus
+    // Leider wird nicht geprüft ob eine Regel schon existiert. Wenn das Programm also zweimal läuft ohne dazwischen den Server neu zu starten
+    // werden dann 2 FIRE events erstellt.
+    // client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "50"}));
+    // ----------------------------------------------------------------------------------
+}
 
     public CommandLineClient(String serverHost, int serverPort) throws IOException {
-    	tManager.connect(serverHost, serverPort);
+        tManager.connect(serverHost, serverPort);
     }
- 
-    public void sendRule(String rule_) {
-    	RulePkt rule = TRexRuleParser.parse(rule_, 2000);
-    	try {
-			tManager.sendRule(rule, EngineType.CPU);
-		} catch (IOException e) { 
-			e.printStackTrace();
-		}
-    }
-    
-    public void subscribe(List<Integer> subTypes) {
-	for(int subType : subTypes) {
-		SubPkt sub = new SubPkt(subType);
-	    try {
-		    tManager.send(sub);	
-		 } catch (IOException e) { e.printStackTrace(); }
-	    }
-    }
-    
-    public void publish(int pubType, List<String> keys, List<String> values) {
-	PubPkt pub;
-	boolean boolVal;
-	int intVal;
-	float floatVal;
 
-	pub = new PubPkt(pubType);
-	for(int i=0; i<keys.size(); i++) {
-	    if(values.get(i).equals("true")) {
-		boolVal = true;
-		pub.addAttribute(new Attribute(keys.get(i), boolVal)); // add a bool attr
-	    } else if(values.get(i).equals("false")) {
-		boolVal = false;
-		pub.addAttribute(new Attribute(keys.get(i), boolVal)); // add a bool attr
-	    } else {
-		try {
-		    intVal = Integer.parseInt(values.get(i));
-		    pub.addAttribute(new Attribute(keys.get(i), intVal)); // add an int attr
-		} catch(NumberFormatException e1) {
-		    try {
-			floatVal = Float.parseFloat(values.get(i));
-			pub.addAttribute(new Attribute(keys.get(i), floatVal)); // add a float attr
-		    } catch(NumberFormatException e2) {
-			pub.addAttribute(new Attribute(keys.get(i), values.get(i))); // add a String attr
-		    }
-		}
-	    }
-	}
-	try {
-		System.out.println(pub);
-	    tManager.send(pub);
-	} catch (IOException e) { e.printStackTrace(); }	
+    public void sendRule(String rule_) {
+        RulePkt rule = TRexRuleParser.parse(rule_, 2000);
+        try {
+            tManager.sendRule(rule, EngineType.CPU);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void subscribe(List<Integer> subTypes) {
+        for (int subType : subTypes) {
+            SubPkt sub = new SubPkt(subType);
+            try {
+                tManager.send(sub);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void publish(int pubType, List<String> keys, List<String> values) {
+        PubPkt pub;
+        boolean boolVal;
+        int intVal;
+        float floatVal;
+
+        pub = new PubPkt(pubType);
+        for (int i = 0; i < keys.size(); i++) {
+            if (values.get(i).equals("true")) {
+                boolVal = true;
+                pub.addAttribute(new Attribute(keys.get(i), boolVal)); // add a bool attr
+            } else if (values.get(i).equals("false")) {
+                boolVal = false;
+                pub.addAttribute(new Attribute(keys.get(i), boolVal)); // add a bool attr
+            } else {
+                try {
+                    intVal = Integer.parseInt(values.get(i));
+                    pub.addAttribute(new Attribute(keys.get(i), intVal)); // add an int attr
+                } catch (NumberFormatException e1) {
+                    try {
+                        floatVal = Float.parseFloat(values.get(i));
+                        pub.addAttribute(new Attribute(keys.get(i), floatVal)); // add a float attr
+                    } catch (NumberFormatException e2) {
+                        pub.addAttribute(new Attribute(keys.get(i), values.get(i))); // add a String attr
+                    }
+                }
+            }
+        }
+        try {
+            System.out.println(pub);
+            tManager.send(pub);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void notifyPktReceived(TRexPkt pkt) {
-	if(! (pkt instanceof PubPkt)) {
-	    System.out.println("Ingnoring wrong packet: "+pkt);
-	    return;
-	}
-	PubPkt pub = (PubPkt) pkt;
-	System.out.print("PubPacket received: {");
-	System.out.print(pub.getEventType());
-	for(Attribute att : pub.getAttributes()) {
-	    System.out.print(" <"+att.getName());
-	    switch(att.getValType()) {
-	    case BOOL: System.out.print(" : bool = "+att.getBoolVal()+">"); break;
-	    case INT: System.out.print(" : int = "+att.getIntVal()+">"); break;
-	    case FLOAT: System.out.print(" : float = "+att.getFloatVal()+">"); break;
-	    case STRING: System.out.print(" : string = "+att.getStringVal()+">"); break;
-	    }
-	}
-	System.out.print("}@");
-	System.out.println(new Date(pub.getTimeStamp()).toLocaleString());
+        if (!(pkt instanceof PubPkt)) {
+            System.out.println("Ingnoring wrong packet: " + pkt);
+            return;
+        }
+        PubPkt pub = (PubPkt) pkt;
+        System.out.print("PubPacket received: {");
+        System.out.print(pub.getEventType());
+        for (Attribute att : pub.getAttributes()) {
+            System.out.print(" <" + att.getName());
+            switch (att.getValType()) {
+                case BOOL:
+                    System.out.print(" : bool = " + att.getBoolVal() + ">");
+                    break;
+                case INT:
+                    System.out.print(" : int = " + att.getIntVal() + ">");
+                    break;
+                case FLOAT:
+                    System.out.print(" : float = " + att.getFloatVal() + ">");
+                    break;
+                case STRING:
+                    System.out.print(" : string = " + att.getStringVal() + ">");
+                    break;
+            }
+        }
+        System.out.print("}@");
+        System.out.println(new Date(pub.getTimeStamp()).toLocaleString());
     }
+
     @Override
     public void notifyConnectionError() {
-	System.out.println("Connection error. Exiting.");
-	System.exit(-1);
+        System.out.println("Connection error. Exiting.");
+        System.exit(-1);
     }
 }
     
