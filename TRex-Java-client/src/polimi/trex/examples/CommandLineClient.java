@@ -88,9 +88,9 @@ public class CommandLineClient implements PacketListener {
 		int TempCounter = 0;
 		int FireCounter = 0;
 		int SmokeCounter = 0;
+		List<Integer> variableValues = new ArrayList<>();
 
 		client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
-
 		// create 1000 rules
 		for (int i = 0; i < 1000; i++){
 			// every 10th iteration, publish a new Fire rule
@@ -99,6 +99,7 @@ public class CommandLineClient implements PacketListener {
 				int[] variables = new int[10];
 				for (int j = 0; j < variables.length; j++) {
 					variables[j] = random.nextInt(100) + 1;
+					variableValues.add(variables[j]);
 				}
 				int[] TemperatureUniform = variables;
 				for(int temp: TemperatureUniform){
