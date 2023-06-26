@@ -74,6 +74,10 @@ public class CommandLineClient implements PacketListener {
 
     public static void main(String[] args) throws IOException {
 
+		int SMOKE = 2000;
+        int TEMP = 2001;
+        int FIRE = 2100;
+
         Random random = new Random();
 
         String serverHost = "localhost";
@@ -84,35 +88,25 @@ public class CommandLineClient implements PacketListener {
         client.tManager.addPacketListener(client);
         client.tManager.start();
 
-
-        int TempCounter = 0;
-        int FireCounter = 0;
-        int SmokeCounter = 0;
-        List<Integer> variableValues = new ArrayList<>();
-
         client.subscribe(Arrays.asList(new Integer[]{2001, 2000, 2100, 2101, 2102, 2103, 2104, 2105, 2106, 2107, 2108, 2109}));
-
-        int SMOKE = 2000;
-        int TEMP = 2001;
-        int FIRE = 2100;
         int ruleCounter = 0;
         // create 1000 rules
+        String definition = "Define\tFire(area: string, measuredTemp: int)\r\n";
+        String R1_Where = "Where\tarea:=Smoke.area, measuredTemp:=Temp.value;";
         for (int i = 0; i < 10; i++) {
             String assignment = String.format("Assign %d => Smoke, %d => Temp, %d => Fire\r\n", SMOKE, TEMP, FIRE);
-            String definition = "Define\tFire(area: string, measuredTemp: int)\r\n";
-            String R0_From = "From\t\tTemp(value>45)\r\n";
-            String R0_Where = "Where\tarea=Temp.area and measuredTemp=Temp.value";
-            String R0 = "";
+			String R1 = "";
             for (int j = 0; j < 100; j++) {
                 int temp = random.nextInt(100) + 1;
-                R0_From = R0_From.replace("45", String.valueOf(temp));
-                R0 = assignment + definition + R0_From + R0_Where;
-                client.sendRule(R0);
+                String R1_From = String.format("From\tSmoke(area=>$a) and each Temp([int]area=$a, value>%d) within 300000 from Smoke\r\n", temp);
+                // String R1_From = "From\tTemp(value>1)\r\n";
+                R1 = assignment + definition + R1_From + R1_Where;
+                client.sendRule(R1);
             }
             FIRE += 1;
             ruleCounter += 1;
             System.out.println("RuleCounter: " + ruleCounter);
-            System.out.println("RuleDefinition: " + R0);
+            System.out.println("RuleDefinition: " + R1);
         }
 
         List<String> Events = new ArrayList<String>();
@@ -149,7 +143,7 @@ public class CommandLineClient implements PacketListener {
     // Subscribe für Temp, Fire und Smoke events
     // client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
     // Regel für Middleware wird aktiviert
-    // client.sendRule(R0);
+    // client.sendRule(R1);
     // Publish ein Temp event (2001) mit den Attributen area = 1 und value = 50
     // Die Middleware erkennt das Temp.value > 45 ist und sendet deswegen ein zusätzliches FIRE event aus
     // Leider wird nicht geprüft ob eine Regel schon existiert. Wenn das Programm also zweimal läuft ohne dazwischen den Server neu zu starten
