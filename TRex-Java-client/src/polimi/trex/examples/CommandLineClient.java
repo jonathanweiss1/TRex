@@ -90,7 +90,7 @@ public class CommandLineClient implements PacketListener {
         int SmokeCounter = 0;
         List<Integer> variableValues = new ArrayList<>();
 
-        client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
+        client.subscribe(Arrays.asList(new Integer[]{2001, 2000, 2100, 2101, 2102, 2103, 2104, 2105, 2106, 2107, 2108, 2109}));
 
         int SMOKE = 2000;
         int TEMP = 2001;
