@@ -58,9 +58,9 @@ import polimi.trex.ruleparser.TRexRuleParser;
  */
 public class CommandLineClient implements PacketListener {
 	// Jeder EventType wird durch eine id repräsentiert:
-	static int SMOKE = 2000;
-	static int TEMP = 2001;
-	static int FIRE = 2100;
+	// static int SMOKE = 2000;
+	// static int TEMP = 2001;
+	// static int FIRE = 2100;
 
 	// Das hier sind die beiden TESLA Regeln aus dem Paper. Der Code hat ursprünglich die Befehle aus einer Datei gelesen, deswegen müssen die escape-sequenzen rein:
 
@@ -92,29 +92,25 @@ public class CommandLineClient implements PacketListener {
 
 		client.subscribe(Arrays.asList(new Integer[]{2001, 2100, 2000}));
 		// create 1000 rules
-		for (int i = 0; i < 1000; i++){
-			// every 10th iteration, publish a new Fire rule
-			if ((i + 1) % 10 == 0) {
-				// Generate 10 random unifrom distributed variables
-				int[] variables = new int[10];
-				for (int j = 0; j < variables.length; j++) {
-					variables[j] = random.nextInt(100) + 1;
-					variableValues.add(variables[j]);
-				}
-				int[] TemperatureUniform = variables;
-				for(int temp: TemperatureUniform){
-					String assignment = String.format("Assign %d => Smoke, %d => Temp, %d => Fire\r\n", SMOKE, TEMP, FIRE);
-					String definition = "Define\tFire(area: string, measuredTemp: int)\r\n";
-					String R0_From = "From\t\tTemp(value>45)\r\n";
-					R0_From = R0_From.replace("45", String.valueOf(temp));
-					String R0_Where = "Where\tarea=Temp.area and measuredTemp=Temp.value";
+		for (int i = 0; i < 10; i++) {
+			int SMOKE = 2000;
+			int TEMP = 2001;
+			int FIRE = 2100;
 
-					String R0 = assignment + definition + R0_From + R0_Where;
-					client.sendRule(R0);
-				}
+			String assignment = String.format("Assign %d => Smoke, %d => Temp, %d => Fire\r\n", SMOKE, TEMP, FIRE);
+			String definition = "Define\tFire(area: string, measuredTemp: int)\r\n";
+			String R0_From = "From\t\tTemp(value>45)\r\n";
+			String R0_Where = "Where\tarea=Temp.area and measuredTemp=Temp.value";
+			for (int j = 0; i < 100; i++) {
+				int temp = random.nextInt(100) + 1;
+				R0_From = R0_From.replace("45", String.valueOf(temp));
+				String R0 = assignment + definition + R0_From + R0_Where;
+				client.sendRule(R0);
 			}
 		}
+
 		// create 1000 events
+		/**
 		int PublishEventCounter = 1000;
 		double SmokeFactor = 0.9;
 		for (int j = 0; j < PublishEventCounter; j++){
@@ -126,6 +122,7 @@ public class CommandLineClient implements PacketListener {
 				client.publish(TEMP, Arrays.asList(new String[]{"area", "value"}), Arrays.asList(new String[]{"1", "60"}));
 			}
 		}
+		 **/
 
 		// ---------------------------------------------------------------------------------
 		// Subscribe für Temp, Fire und Smoke events
