@@ -57,26 +57,19 @@ import polimi.trex.ruleparser.TRexRuleParser;
  * A very basic, command line oriented, client for TRex.
  */
 public class CommandLineClient implements PacketListener {
-    // Jeder EventType wird durch eine id repräsentiert:
-    // static int SMOKE = 2000;
-    // static int TEMP = 2001;
-    // static int FIRE = 2100;
-
-    // Das hier sind die beiden TESLA Regeln aus dem Paper. Der Code hat ursprünglich die Befehle aus einer Datei gelesen, deswegen müssen die escape-sequenzen rein:
-
-    // static String R1_From = "From\t\tSmoke(area=$a) and each Temp(area=$a and value>45) within 5 min. from Smoke\r\n";
-    // static String R1_Where = "Where\tarea=Smoke.area and measuredTemp=Temp.value";
-
-    // static String R1 = assignment + definition + R1_From + R1_Where;
 
     private TransportManager tManager = new TransportManager(true);
 
-
-    public static void main(String[] args) throws IOException {
-
+    public static void main(String[] args) throws IOException, InterruptedException {
 		int SMOKE = 2000;
         int TEMP = 2001;
         int FIRE = 2100;
+        int FINISHED = 1111;
+
+        int NUM_EVENTS = 3000;
+
+        assert (args.length == 0) || (args[0] == "10" || args[0] == "50" || args[0] == "90");
+        int numSmokeEvents = (int)(((float) Integer.parseInt(args[0]))/100 * NUM_EVENTS);
 
         Random random = new Random();
 
@@ -88,7 +81,7 @@ public class CommandLineClient implements PacketListener {
         client.tManager.addPacketListener(client);
         client.tManager.start();
 
-        client.subscribe(Arrays.asList(new Integer[]{2001, 2000, 2100, 2101, 2102, 2103, 2104, 2105, 2106, 2107, 2108, 2109}));
+        // client.subscribe(Arrays.asList(new Integer[]{2001, 2000, 2100, 2101, 2102, 2103, 2104, 2105, 2106, 2107, 2108, 2109, 1111}));
         int ruleCounter = 0;
         // create 1000 rules
         String definition = "Define\tFire(area: string, measuredTemp: int)\r\n";
@@ -112,16 +105,19 @@ public class CommandLineClient implements PacketListener {
         List<String> Events = new ArrayList<String>();
 
         // create 1000 events
-        for (int k = 0; k < 1000; k++) {
-            if (k < 100) {
+        for (int k = 0; k < NUM_EVENTS; k++) {
+            if (k < numSmokeEvents) {
                 Events.add("SMOKE");
             } else {
                 Events.add("TEMP");
             }
         }
+        System.out.println("NUM SMOKE EVENTS");
+        System.out.println(numSmokeEvents);
 		int smokeCounter = 0;
 		int tempCounter = 0;
-        for (int s = 0; s < 1000; s++) {
+        long start = System.currentTimeMillis();
+        for (int s = 0; s < NUM_EVENTS; s++) {
             int randomIndex = random.nextInt(Events.size());
             String randomEvent = Events.get(randomIndex);
             if (randomEvent.equals("SMOKE")) {
@@ -134,10 +130,15 @@ public class CommandLineClient implements PacketListener {
 				tempCounter += 1;
             }
             Events.remove(randomIndex);
-			System.out.println("SmokeCounter: " + smokeCounter);
-			System.out.println("TempCounter: " + tempCounter);
+            Thread.sleep(1);
+			// System.out.println("SmokeCounter: " + smokeCounter);
+			// System.out.println("TempCounter: " + tempCounter);
         }
-
+        long stop = System.currentTimeMillis();
+        System.out.println("Time: " + (stop-start));
+        System.out.println(FINISHED);
+        client.publish(FINISHED, new ArrayList<String>(), new ArrayList<String>());
+        System.out.println("DONE");
 
     // ---------------------------------------------------------------------------------
     // Subscribe für Temp, Fire und Smoke events
